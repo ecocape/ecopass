@@ -1,12 +1,14 @@
-from random import randint, choice
+from random import choice
 from pyperclip import copy
 from time import sleep
 from os import getcwd
-secure_mode = False
+import json
+#
 path = ""
-a = "qwertyuiopasdfghjklzxcvbnm1234567890~`!@#$%^&*()_-+={[}]|:;'\"<>,.?/"
-a2 = lambda: randint(33, 250)
-password = ""
+#
+letters = "qwertyuiopasdfghjklzxcvbnm"
+numbers = "1234567890"
+symbols = "~`!@#$%^&*()_-+={[}]|:;'\"<>,.?/\\"
 
 def main():
     try:
@@ -16,39 +18,47 @@ def main():
         print(f"option \"{choice}\" doesn't exist")
         sleep(2)
         main()
-def gen(length, name, path):
+
+def gen(length, name, selected):
     password = ""
     for _ in range(length):
-      password += choice(chr(a2()) if secure_mode else a)
-      #copy(password)
-    try: 
-        if path == "":
-            path = getcwd()
-        v = open(f"{path}/passwords.txt", "a")
-        v.write(f"\n{name}:\n{password}")
-        v.close()
-        print(f"{password} used for \"{name}\" has been copied to clipboard and saved")
-    except UnicodeEncodeError:
-        print(f"{password} used for \"{name}\" has been copied to clipboard and not saved, set secure_mode to False")
+        password += choice(selected)
+    copy(password)
+    file = open(f"{path}/passwords.txt", "a")
+    file.write(f"\n{name}:\n{password}")
+    file.close()
+    print(f"{password} used for \"{name}\" has been copied to clipboard and saved")
     return(sleep(2), main())
-    
     
 def func1():
     while True:
         try:
             name = input("Password will be used for? ")
             length = int(input("Length of password? "))
-            if length < 8 or length > 100 and secure_mode == False: 
-                return(print(f"bad length ({length} characters)"), func1())
-            elif length < 14 or length > 100 and secure_mode == True: 
-                return(print(f"bad length ({length}) characters)"), func1())       
+            if length < 8:
+                return(print(f"bad length ({length} characters)"), func1())     
         except ValueError:
             print("invalid input")
             func1()
         else:
-            gen(length, name, path)
-            continue
-
+            gen(length, name, selected)
+            
+selected = ""
+if path == "":
+    path = getcwd()
+cfg = {'includeLetters': True, 'includeNumbers': True, 'includeSymbols': True, 'enableCapitalization': True}
+with open(f"{path}/config.json", "w+") as f:
+    json.dump(cfg, f)
+with open(f"{path}/config.json", "r") as f:
+    load_cfg = json.load(f)
+    if load_cfg["includeLetters"] == True:
+        selected += letters
+    if load_cfg["includeNumbers"] == True:
+        selected += numbers
+    if load_cfg["includeSymbols"] == True:
+        selected += symbols
+    if load_cfg["enableCapitalization"] == True:
+        selected += letters.capitalize()
 if __name__ == '__main__':
     main()
 
