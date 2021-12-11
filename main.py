@@ -1,7 +1,7 @@
 from random import choice
 from pyperclip import copy
 from time import sleep
-from os import getcwd
+from os import getcwd, system, name
 import json
 #
 path = ""
@@ -28,7 +28,12 @@ def gen(length, name, selected):
     file.write(f"\n{name}:\n{password}")
     file.close()
     print(f"{password} used for \"{name}\" has been copied to clipboard and saved")
-    return(sleep(2), main())
+    sleep(2)
+    if name == "nt":
+        system("cls")
+    else:
+        system("clear")
+    main()
     
 def func1():
     while True:
@@ -58,7 +63,6 @@ with open(f"{path}/config.json", "r") as f:
     if load_cfg["includeSymbols"] == True:
         selected += symbols
     if load_cfg["enableCapitalization"] == True:
-        selected += letters.capitalize()
+        selected += letters.swapcase()
 if __name__ == '__main__':
     main()
-
