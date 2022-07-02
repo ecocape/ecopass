@@ -6,11 +6,17 @@ from random import choice
 from time import sleep
 from pathlib import Path, PosixPath, WindowsPath
 
-windows_cfg_path = Path(os.environ["HOME"], "AppData", "Roaming", "ecopass").resolve()
-linux_cfg_path = Path(os.environ["HOME"], ".config", "ecopass").resolve()
+try:
+    linux_cfg_path = PosixPath(os.environ["HOME"], ".config", "ecopass").resolve()
+except NotImplementedError:
+    windows_cfg_path = WindowsPath(os.environ["HOME"], "AppData", "Roaming", "ecopass").resolve()
+if os.name == "posix":
+    use_cfg_path = linux_cfg_path
+if os.name == "nt":
+    use_cfg_path = windows_cfg_path
+
 pwpath = ""
 using_sqlite = False
-
 letters = "qwertyuiopasdfghjklzxcvbnm"
 numbers = "1234567890"
 symbols = "~`!@#$%^&*()_-+={[}]|:;'\"<>,.?/\\"
@@ -26,28 +32,20 @@ cfg = {
     }
 }
 
-def checkcfg():
+def checkcfg(use_cfg_path):
     try:
-        if os.name == "posix":
-            if Path.is_file(PosixPath(f"{linux_cfg_path}/config.json")) == False:
-                with open(f"{linux_cfg_path}/config.json", "w+") as f:
-                    json.dump(cfg, f, indent=4)
-        if os.name == "nt":
-            if Path.is_file(WindowsPath(f"{windows_cfg_path}/config.json")) == False:
-                with open(f"{windows_cfg_path}/config.json", "w+") as f:
-                    json.dump(cfg, f, indent=4)
+        if Path.is_file(Path(f"{use_cfg_path}", "config.json")) == False:
+            with open(Path(f"{use_cfg_path}", "config.json"), "w+") as f:
+                json.dump(cfg, f, indent=4)
     except FileNotFoundError:
-        if os.name == "posix":
-            os.mkdir(linux_cfg_path)
-        if os.name == "nt":
-            os.mkdir(windows_cfg_path)
-        checkcfg()
+        os.mkdir(use_cfg_path)
+        checkcfg(use_cfg_path)
     except json.decoder.JSONDecodeError:
         json.load(f.truncate())
         json.dump(cfg, f, indent=4)
-checkcfg()
+checkcfg(use_cfg_path)
 
-with open(f"{linux_cfg_path}/config.json", "r+") as f:
+with open(Path(f"{use_cfg_path}", "config.json"), "r+") as f:
     selected = ""
     load_cfg = json.load(f)
     if load_cfg["generation"]["includeLetters"] == True:
