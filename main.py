@@ -3,7 +3,6 @@ import os
 import json
 import sqlite3
 from random import choice
-from time import sleep
 from pathlib import Path, PosixPath, WindowsPath
 
 try:
@@ -72,29 +71,26 @@ with open(Path(f"{use_cfg_path}", "config.json"), "r+") as f:
             )""")
         except sqlite3.OperationalError:
             pass
+        
+def key_continue():
+    input("Press Enter to continue")
+    return
 
 def main():
-    try:
-        choice = input("i would like to\n1: generate a new password\n2: manage .db passwords\n> ")
-        match choice:
-            case "1":
-                pwinput()
-            case "2":
-                pwmanage()
-    except KeyError:
-        print(f"option \"{choice}\" doesn't exist")
-        sleep(2)
-        main()
+    choice = input("I would like to:\n1: Generate a new password\n2: Manage .db passwords\n3: Exit\n> ")
+    match choice:
+        case "1":
+            pwinput()
+        case "2":
+            pwmanage()
+        case "3":
+            conn.close()
+            exit()
+        case _:
+            print(f"Option \"{choice}\" doesn't exist")
+            main()
 
-def pwmanage():
-    inpt = input("What is the password used for?\n> ")
-    c.execute(f"SELECT * FROM cr WHERE name LIKE '%{inpt}%'")
-    print(c.fetchall())
-
-def gen(length, usedfor, selected):
-    generated = ""
-    for _ in range(length):
-        generated += choice(selected)
+def save(usedfor, generated):
     try:
         pyclip.copy(generated)
     except pyclip.base.ClipboardSetupException:
@@ -107,28 +103,84 @@ def gen(length, usedfor, selected):
     elif using_sqlite == True:
         c.execute("INSERT INTO cr VALUES (:name, :created)", {'name': usedfor, 'created': generated})
         conn.commit()
-    print(f"{generated} used for \"{usedfor}\" has been copied to clipboard and saved")
-    sleep(4)
-    os.system("clear")
+    print(f"Password used for \"{usedfor}\" has been copied to clipboard and saved")
+    key_continue()
+    if os.name == "posix":
+        os.system("clear")
+    if os.name == "nt":
+         os.system("cls")
     main()
 
+def gen(length):
+    generated = ""
+    for _ in range(length):
+        generated += choice(selected) 
+    return generated
+
 def pwinput():
-    while True:
-        try:
-            usedfor = input("Password will be used for?\n> ")
-            length = int(input("Length of password?\n> "))
-            if length < 8:
-                inpt = input("Are you sure? Every site advises against using a password under 8 characters. (y/n)\n> ")
-                match inpt.lower():
-                    case "y":
-                        pass
-                    case "n":
-                        pwinput()
-        except ValueError:
-            print("invalid input")
-            pwinput()
-        else:
-            gen(length, usedfor, selected)
+    usedfor = input("Password will be used for?\n> ")
+    length = int(input("Length of password?\n> "))
+    if length < 8:
+        inpt = input("Are you sure? Every site advises against using a password under 8 characters. (y/n)\n> ")
+        match inpt.lower():
+            case "y":
+                pass
+            case "n":
+                pwinput()
+            case _:
+                print(f"Option \"{inpt}\" doesn't exist")
+    else:
+        generated = gen(length) 
+        save(usedfor=usedfor, generated=generated)   
+
+def pwmanage():
+    def search_pw():
+        inpt = input("Password's full or partial name:\n> ")
+        c.execute(f"SELECT * FROM cr WHERE name LIKE '%{inpt}%'")
+        results = c.fetchall()
+        for i in results:
+            print(f"Name: {i[0]}\nPassword: {i[1]}\n")
+
+    def delete_pw():
+        inpt = input("Password's full name:\n> ")
+        c.execute(f"DELETE FROM cr WHERE name LIKE :inpt", {'inpt': inpt})
+        print("Deleted")
+
+    def edit_pw():
+        def update_name():
+            inpt_current = input("Current name:\n> ")
+            inpt_new = input("New name:\n> ")
+            c.execute("UPDATE cr SET name = :inpt_new WHERE name LIKE :inpt_current", {'inpt_new': inpt_new, 'inpt_current': inpt_current})
+        def update_pw():
+            inpt = input("Password's full name:\n> ")
+            inpt_length = int(input("New password's length?\n> "))
+            new_pass = gen(length=inpt_length, selected=selected)
+            c.execute("UPDATE cr SET created = :new_pw WHERE name LIKE :inpt", {'new_pw': new_pass, 'inpt': inpt})
+    
+        inpt_choice = input("Edit\n1:Password's name\n2: Password\n> ")
+        match inpt_choice:
+            case "1":
+                update_name()
+            case "2":
+                update_pw()
+            case _:
+                print(f"Option \"{inpt_choice}\" doesn't exist")
+        print("Updated")
+
+    input_manage = input("How would you like to manage your passwords?\n1: Search passwords\n2: Delete passwords\n3: Edit passwords\n> ")
+    match input_manage:
+        case "1":
+            search_pw()
+        case "2":
+            delete_pw()
+        case "3":
+            edit_pw()
+        case _:
+            print(f"Option \"{input_manage}\" doesn't exist")
+    conn.commit()
+    key_continue()
+    print("Returning...\n")
+    main()
 
 if __name__ == '__main__':
     main()
